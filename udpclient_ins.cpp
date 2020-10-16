@@ -166,7 +166,8 @@ bool udp_recev_ins_loop()
         }
     }
 
-    while (udpClient_INS::instance()->being_udpRecv_processing)
+    bool isstop = false;
+    while (udpClient_INS::instance()->being_udpRecv_processing && !isstop)
     {
         ret = recv(udpClient_INS::instance()->mSfd, udpClient_INS::instance()->mBuf, udpClient_INS::instance()->mBufSize, 0);
         if (ret == -1)
@@ -179,26 +180,27 @@ bool udp_recev_ins_loop()
 //            std::cout << str << std::endl;
         }
 
-        if (udpClient_INS::instance()->mIsNeedSaveTxt) {
-            static int count_rr = 0;
-            unsigned char content[2014];
-            memcpy(&content[0], &udpClient_INS::instance()->mBuf[0], sizeof(udpClient_INS::instance()->mBuf));
-            for (int i = 0; i < 72; i++) {
-                udpClient_INS::instance()->txt << udpClient_INS::instance()->mBuf[i];
-            }
-            udpClient_INS::instance()->txt << std::endl;
-
-            if (count_rr++ > 1000)
-            {
-                udpClient_INS::instance()->txt.close();
-                udpClient_INS::instance()->set_saveTxt(false);
-                std::cout << "txt closed ********" << std::endl;
-                break;
-            }
-        }
-
         if(udpClient_INS::instance()->mBuf[0] == 0xE7 && ret == 72)
         {
+            if (udpClient_INS::instance()->mIsNeedSaveTxt) {
+                static int count_rr = 0;
+                unsigned char content[2014];
+                memcpy(&content[0], &udpClient_INS::instance()->mBuf[0], sizeof(udpClient_INS::instance()->mBuf));
+                for (int i = 0; i < 72; i++) {
+                    udpClient_INS::instance()->txt << udpClient_INS::instance()->mBuf[i];
+                }
+                //udpClient_INS::instance()->txt << std::endl;
+
+                if (count_rr++ > 1000)
+                {
+                    udpClient_INS::instance()->txt.close();
+                    udpClient_INS::instance()->set_saveTxt(false);
+                    std::cout << "txt closed ********" << std::endl;
+                    isstop = true;
+                    break;
+                }
+            }
+
             memcpy(&udpClient_INS::instance()->mGPSInfos[0], &udpClient_INS::instance()->mBuf[23], sizeof(double));
             memcpy(&udpClient_INS::instance()->mGPSInfos[1], &udpClient_INS::instance()->mBuf[31], sizeof(double));
             udpClient_INS::instance()->mGPSInfos[0] *= 180 / M_PI;
